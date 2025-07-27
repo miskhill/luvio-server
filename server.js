@@ -61,7 +61,7 @@ const checkoutLimiter = rateLimit({
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 5, // Allow 5 requests per windowMs without delay
-  delayMs: 500, // Add 500ms delay per request after delayAfter
+  delayMs: () => 500, // Add 500ms delay per request after delayAfter (new syntax)
   maxDelayMs: 20000, // Maximum delay of 20 seconds
 });
 
