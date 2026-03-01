@@ -10,8 +10,7 @@ class PaymentService {
    * @returns {Promise<object>} Checkout session with URL
    */
   async createCheckoutSession(lineItems, successUrl, cancelUrl, metadata = {}) {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+    const basePayload = {
       line_items: lineItems,
       mode: 'payment',
       success_url: successUrl,
@@ -21,7 +20,22 @@ class PaymentService {
       shipping_address_collection: {
         allowed_countries: ['GB'], // UK only currently this might change in the future
       },
-    });
+    };
+
+    let session;
+    try {
+      // Let Stripe choose the best set of enabled payment methods for this Checkout Session.
+      session = await stripe.checkout.sessions.create({
+        ...basePayload,
+        automatic_payment_methods: { enabled: true },
+      });
+    } catch (error) {
+      // Backwards-compatible fallback if the account/API config doesn't support automatic payment methods.
+      session = await stripe.checkout.sessions.create({
+        ...basePayload,
+        payment_method_types: ['card'],
+      });
+    }
 
     return {
       sessionId: session.id,
@@ -48,12 +62,41 @@ class PaymentService {
   }
 
   /**
+   * Get checkout session status by checkout session ID
+   * @param {string} sessionId - The checkout session ID
+   * @returns {Promise<object>} Checkout session status information
+   */
+  async getCheckoutSessionStatus(sessionId) {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['customer_details'],
+    });
+
+    return {
+      sessionId: session.id,
+      status: session.status,
+      paymentStatus: session.payment_status,
+      amountTotal: typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
+      currency: session.currency || null,
+      customerEmail: session.customer_details?.email || session.customer_email || null,
+      created: new Date(session.created * 1000).toISOString(),
+      verifiedPaid: session.payment_status === 'paid' && session.status === 'complete',
+    };
+  }
+
+  /**
    * Process webhook event
    * @param {object} event - Stripe webhook event
    * @returns {Promise<void>}
    */
   async processWebhookEvent(event) {
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        console.log('Checkout session completed:', session.id);
+        await this.handleCompletedCheckoutSession(session);
+        break;
+      }
+
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
@@ -69,6 +112,13 @@ class PaymentService {
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
+  }
+
+  async handleCompletedCheckoutSession(session) {
+    const amountTotal = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+    console.log(
+      `Processing completed checkout session: ${session.id} (payment_status=${session.payment_status}, amount_total=${amountTotal ?? 'n/a'})`
+    );
   }
 
   /**
