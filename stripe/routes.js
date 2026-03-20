@@ -1,7 +1,7 @@
 const express = require('express');
 const stripe = require('./config');
+const catalogService = require('./catalogService');
 const paymentService = require('./paymentService');
-const { PRODUCT_CATALOG } = require('./productCatalog');
 
 const router = express.Router();
 
@@ -59,42 +59,7 @@ router.post('/create-checkout-session', async (req, res) => {
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ error: 'Cart items are required' });
     }
-
-    const MAX_CART_ITEMS = 25;
-    const MAX_QUANTITY_PER_ITEM = 50;
-
-    if (cartItems.length > MAX_CART_ITEMS) {
-      return res.status(400).json({ error: 'Too many cart items' });
-    }
-
-    const lineItems = [];
-    for (const item of cartItems) {
-      const product = PRODUCT_CATALOG[item?.id];
-
-      if (!product) {
-        return res.status(400).json({ error: `Unknown product id: ${item?.id}` });
-      }
-
-      const quantity = Number(item?.quantity);
-      if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY_PER_ITEM) {
-        return res.status(400).json({ error: `Invalid quantity for ${product.id}` });
-      }
-
-      lineItems.push({
-        price_data: {
-          currency: product.currency,
-          product_data: {
-            name: product.name,
-            metadata: {
-              color: product.color,
-              item_id: product.id,
-            },
-          },
-          unit_amount: product.unitAmount,
-        },
-        quantity,
-      });
-    }
+    const { lineItems, pricingSource, shippingOptions } = await catalogService.buildCheckoutConfig(cartItems);
 
     const returnBaseUrl = getReturnBaseUrl(req);
     if (!returnBaseUrl) {
@@ -108,16 +73,41 @@ router.post('/create-checkout-session', async (req, res) => {
       lineItems,
       successUrl,
       cancelUrl,
-      sanitizeMetadata(metadata)
+      sanitizeMetadata(metadata),
+      {
+        pricingSource,
+        shippingOptions,
+      }
     );
     
     res.json(result);
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+
+    const errorMessage = error.message || 'Failed to create checkout session';
+    if (
+      errorMessage === 'Cart items are required' ||
+      errorMessage === 'Too many cart items' ||
+      errorMessage === 'Shipping is not configured. Set STRIPE_SHIPPING_RATE_STANDARD_GB before accepting orders.' ||
+      errorMessage.startsWith('Unknown product id:') ||
+      errorMessage.startsWith('Invalid quantity for')
+    ) {
+      return res.status(400).json({ error: errorMessage });
+    }
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 
+router.get('/catalog', async (req, res) => {
+  try {
+    const catalog = await catalogService.getPublicCatalog();
+    res.json(catalog);
+  } catch (error) {
+    console.error('Error retrieving Stripe catalog:', error);
+    res.status(500).json({ error: error.message || 'Failed to retrieve product catalog' });
+  }
+});
 
 
 // Get payment status

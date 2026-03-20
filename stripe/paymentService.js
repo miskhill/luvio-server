@@ -7,9 +7,10 @@ class PaymentService {
    * @param {string} successUrl - URL to redirect to after successful payment
    * @param {string} cancelUrl - URL to redirect to if payment is cancelled
    * @param {object} metadata - Additional metadata for the payment
+   * @param {object} options - Additional checkout session options
    * @returns {Promise<object>} Checkout session with URL
    */
-  async createCheckoutSession(lineItems, successUrl, cancelUrl, metadata = {}) {
+  async createCheckoutSession(lineItems, successUrl, cancelUrl, metadata = {}, options = {}) {
     const basePayload = {
       line_items: lineItems,
       mode: 'payment',
@@ -21,6 +22,10 @@ class PaymentService {
         allowed_countries: ['GB'], // UK only currently this might change in the future
       },
     };
+
+    if (Array.isArray(options.shippingOptions) && options.shippingOptions.length > 0) {
+      basePayload.shipping_options = options.shippingOptions;
+    }
 
     let session;
     try {
