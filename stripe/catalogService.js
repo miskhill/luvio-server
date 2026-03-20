@@ -21,6 +21,7 @@ function getStaticProducts() {
     id: product.id,
     name: product.name,
     color: product.hexColor,
+    imageUrl: null,
     description: product.description,
     currency: product.currency,
     price: product.unitAmount / 100,
@@ -74,6 +75,10 @@ async function getStripeManagedProducts() {
         id: product.id,
         name: stripeProduct.name || product.name,
         color: product.hexColor,
+        imageUrl:
+          Array.isArray(stripeProduct.images) && typeof stripeProduct.images[0] === 'string'
+            ? stripeProduct.images[0]
+            : null,
         description: product.description,
         currency: defaultPrice.currency || product.currency,
         price: defaultPrice.unit_amount / 100,
@@ -226,6 +231,7 @@ async function getPublicCatalog() {
       id: product.id,
       name: product.name,
       color: product.color,
+      imageUrl: product.imageUrl,
       description: product.description,
       currency: product.currency,
       price: product.price,
