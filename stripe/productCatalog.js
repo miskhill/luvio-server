@@ -7,6 +7,7 @@ const PRODUCT_CATALOG = Object.freeze({
     description: 'Not looking for a relationship. Please don\'t approach.',
     currency: 'gbp',
     unitAmount: 200,
+    eligibleBandQuantity: 1,
     stripeProductEnvVar: 'STRIPE_PRODUCT_ID_RED_BAND',
   },
   'yellow-band': {
@@ -17,6 +18,7 @@ const PRODUCT_CATALOG = Object.freeze({
     description: 'Might be open..., but I\'ll make the first move.',
     currency: 'gbp',
     unitAmount: 200,
+    eligibleBandQuantity: 1,
     stripeProductEnvVar: 'STRIPE_PRODUCT_ID_YELLOW_BAND',
   },
   'green-band': {
@@ -27,6 +29,7 @@ const PRODUCT_CATALOG = Object.freeze({
     description: 'Open to connection. Feel free to come say hello.',
     currency: 'gbp',
     unitAmount: 200,
+    eligibleBandQuantity: 1,
     stripeProductEnvVar: 'STRIPE_PRODUCT_ID_GREEN_BAND',
   },
   'band-pack': {
@@ -37,6 +40,7 @@ const PRODUCT_CATALOG = Object.freeze({
     description: 'Get all three bands at a discounted price!',
     currency: 'gbp',
     unitAmount: 500,
+    eligibleBandQuantity: 3,
     stripeProductEnvVar: 'STRIPE_PRODUCT_ID_BAND_PACK',
   },
 });

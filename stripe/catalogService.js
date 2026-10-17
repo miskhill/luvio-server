@@ -26,10 +26,20 @@ function getStaticProducts() {
     currency: product.currency,
     price: product.unitAmount / 100,
     unitAmount: product.unitAmount,
+    eligibleBandQuantity: product.eligibleBandQuantity,
     metadataColor: product.color,
     stripeProductId: null,
     stripePriceId: null,
   }));
+}
+
+function calculateEligibleBandQuantity(cartItems) {
+  return cartItems.reduce((total, item) => {
+    const product = PRODUCT_CATALOG[item.id];
+    const quantity = Number(item.quantity);
+    if (!product || !Number.isSafeInteger(quantity) || quantity < 1) return total;
+    return total + product.eligibleBandQuantity * quantity;
+  }, 0);
 }
 
 async function getStripeManagedProducts() {
@@ -83,6 +93,7 @@ async function getStripeManagedProducts() {
         currency: defaultPrice.currency || product.currency,
         price: defaultPrice.unit_amount / 100,
         unitAmount: defaultPrice.unit_amount,
+        eligibleBandQuantity: product.eligibleBandQuantity,
         metadataColor: product.color,
         stripeProductId: stripeProduct.id,
         stripePriceId: defaultPrice.id,
@@ -217,6 +228,7 @@ async function buildCheckoutConfig(cartItems) {
 
   return {
     lineItems,
+    eligibleBandsSold: calculateEligibleBandQuantity(cartItems),
     pricingSource: catalog.pricingSource,
     shippingOptions,
   };
@@ -249,6 +261,7 @@ async function getPublicCatalog() {
 
 module.exports = {
   buildCheckoutConfig,
+  calculateEligibleBandQuantity,
   getPublicCatalog,
   getProductForCheckout,
   getShopCatalog,

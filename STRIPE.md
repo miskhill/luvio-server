@@ -99,8 +99,13 @@ Create a webhook endpoint in Stripe:
 
 Recommended events:
 - `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
 - `payment_intent.succeeded`
 - `payment_intent.payment_failed`
+
+The asynchronous Checkout event keeps the charity pledge cache current for delayed payment
+methods. If it is not configured, the source total is still correct and refreshes when the cache
+expires, but the public counter may take up to five minutes to show that payment.
 
 Then copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
 
