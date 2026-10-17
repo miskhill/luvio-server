@@ -19,12 +19,19 @@ Important implementation points:
 - Checkout pricing is built on the backend only.
 - Return URLs are chosen by the backend, not accepted from the browser.
 - Checkout success in the UI is verified by `GET /api/stripe/checkout-session/:sessionId`, not by query params alone.
+- The charity counter reads `GET /api/stripe/charity-impact`; both website displays use this one
+  backend source.
+- Eligible band quantities are calculated on the server and stored in Checkout Session metadata.
+- The charity total is derived from completed, paid Stripe Checkout Sessions rather than a mutable
+  deployment-local counter.
 
 Key files:
 - `stripe/catalogService.js`
 - `stripe/productCatalog.js`
 - `stripe/routes.js`
 - `stripe/paymentService.js`
+- `stripe/charityService.js`
+- `charity/donations.json`
 - `server.js`
 
 ## Environment variables
@@ -194,6 +201,8 @@ Then run one small checkout and verify:
 - The site shows "Order received"
 - `GET /api/stripe/checkout-session/:sessionId` returns `verifiedPaid: true`
 - Stripe webhook deliveries are `2xx`
+- `GET /api/stripe/charity-impact` increases by £1 per individual band, including £3 per band pack
+- replaying the successful Checkout webhook does not change the total a second time
 
 ## Troubleshooting
 

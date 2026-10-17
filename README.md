@@ -25,3 +25,13 @@ the cumulative pledge. Only add an entry after the transfer has evidence, using 
 }
 ```
 
+### Production operation
+
+- The website reads the same public total for the homepage card and `/charity` page.
+- The total is cached for five minutes and invalidated by successful Checkout webhooks.
+- Subscribe the deployed Stripe webhook to `checkout.session.completed` and
+  `checkout.session.async_payment_succeeded` so card and delayed-payment sales refresh promptly.
+- Deploy server API changes before dependent website changes.
+- After deployment, verify that `GET /api/stripe/charity-impact` returns integer pence, `GBP`, an
+  eligible-band count, and no customer or payment details.
+
