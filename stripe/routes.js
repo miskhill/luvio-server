@@ -2,6 +2,7 @@ const express = require('express');
 const stripe = require('./config');
 const catalogService = require('./catalogService');
 const paymentService = require('./paymentService');
+const charityService = require('./charityService');
 
 const router = express.Router();
 
@@ -59,7 +60,8 @@ router.post('/create-checkout-session', async (req, res) => {
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ error: 'Cart items are required' });
     }
-    const { lineItems, pricingSource, shippingOptions } = await catalogService.buildCheckoutConfig(cartItems);
+    const { lineItems, pricingSource, shippingOptions, eligibleBandsSold } =
+      await catalogService.buildCheckoutConfig(cartItems);
 
     const returnBaseUrl = getReturnBaseUrl(req);
     if (!returnBaseUrl) {
@@ -73,7 +75,12 @@ router.post('/create-checkout-session', async (req, res) => {
       lineItems,
       successUrl,
       cancelUrl,
-      sanitizeMetadata(metadata),
+      {
+        ...sanitizeMetadata(metadata),
+        charity_schema_version: '1',
+        charity_eligible_bands: String(eligibleBandsSold),
+        checkout_source: 'luvio-web',
+      },
       {
         pricingSource,
         shippingOptions,
@@ -106,6 +113,16 @@ router.get('/catalog', async (req, res) => {
   } catch (error) {
     console.error('Error retrieving Stripe catalog:', error);
     res.status(500).json({ error: error.message || 'Failed to retrieve product catalog' });
+  }
+});
+
+router.get('/charity-impact', async (req, res) => {
+  try {
+    const impact = await charityService.getPublicImpact();
+    res.json(impact);
+  } catch (error) {
+    console.error('Error retrieving charity impact:', error);
+    res.status(503).json({ error: 'The charity total is temporarily unavailable' });
   }
 });
 

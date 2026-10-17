@@ -1,6 +1,12 @@
 const stripe = require('./config');
+const charityService = require('./charityService');
 
 class PaymentService {
+  constructor(stripeClient = stripe, charityImpactService = charityService) {
+    this.stripe = stripeClient;
+    this.charityService = charityImpactService;
+  }
+
   /**
    * Create a checkout session for hosted Stripe checkout
    * @param {Array} lineItems - Array of line items for the checkout
@@ -30,13 +36,13 @@ class PaymentService {
     let session;
     try {
       // Let Stripe choose the best set of enabled payment methods for this Checkout Session.
-      session = await stripe.checkout.sessions.create({
+      session = await this.stripe.checkout.sessions.create({
         ...basePayload,
         automatic_payment_methods: { enabled: true },
       });
     } catch (error) {
       // Backwards-compatible fallback if the account/API config doesn't support automatic payment methods.
-      session = await stripe.checkout.sessions.create({
+      session = await this.stripe.checkout.sessions.create({
         ...basePayload,
         payment_method_types: ['card'],
       });
@@ -56,7 +62,7 @@ class PaymentService {
    * @returns {Promise<object>} Payment status information
    */
   async getPaymentStatus(paymentIntentId) {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
     
     return {
       status: paymentIntent.status,
@@ -72,7 +78,7 @@ class PaymentService {
    * @returns {Promise<object>} Checkout session status information
    */
   async getCheckoutSessionStatus(sessionId) {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const session = await this.stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['customer_details'],
     });
 
@@ -102,6 +108,13 @@ class PaymentService {
         break;
       }
 
+      case 'checkout.session.async_payment_succeeded': {
+        const session = event.data.object;
+        console.log('Checkout session payment succeeded:', session.id);
+        this.charityService.invalidateCache();
+        break;
+      }
+
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
@@ -124,6 +137,7 @@ class PaymentService {
     console.log(
       `Processing completed checkout session: ${session.id} (payment_status=${session.payment_status}, amount_total=${amountTotal ?? 'n/a'})`
     );
+    this.charityService.invalidateCache();
   }
 
   /**
@@ -159,3 +173,4 @@ class PaymentService {
 }
 
 module.exports = new PaymentService();
+module.exports.PaymentService = PaymentService;
